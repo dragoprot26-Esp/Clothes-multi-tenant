@@ -228,3 +228,24 @@ export async function clotAgregarResena(codigo: string, comentario: any): Promis
   try { await rpc('clot_agregar_resena', { p_codigo: codigo, p_comment: comentario }, false); }
   catch (e) { /* noop */ }
 }
+
+// -- Cambio de contraseña real del dueño (estando logueado) --
+export async function cambiarPasswordDueno(codigo: string, newPassword: string): Promise<{ ok: boolean; msg?: string }> {
+  if (!newPassword || newPassword.length < 6) return { ok: false, msg: 'La contraseña debe tener 6+ caracteres.' };
+  const tok = await authToken();
+  if (!tok) return { ok: false, msg: 'La sesión venció. Salí y volvé a entrar antes de cambiarla.' };
+  try {
+    const res = await fetch(`${SB_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    if (!res.ok) { const t = await res.text(); return { ok: false, msg: 'No se pudo cambiar: ' + t }; }
+    // Sincroniza el fallback del molde si conocemos el usuario
+    try {
+      const m = await miMembresia();
+      if (m && m.usuario) await rpc('sincronizar_clave_dueno', { p_codigo: codigo, p_usuario: m.usuario, p_pass: newPassword }, false);
+    } catch (e) { /* noop */ }
+    return { ok: true };
+  } catch (e: any) { return { ok: false, msg: e.message || 'Error de red' }; }
+}
