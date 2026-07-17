@@ -16,6 +16,7 @@ interface AdminPanelProps {
   deliveries: Delivery[];
   retiroOrders: RetiroOrder[];
   onMarkDelivered?: (id: string) => void;
+  onChangeOwnerPassword?: (newPassword: string) => Promise<{ ok: boolean; msg?: string }>;
   loggedInUser: {
     name: string;
     role: 'admin' | 'collaborator';
@@ -48,6 +49,7 @@ export default function AdminPanel({
   deliveries,
   retiroOrders,
   onMarkDelivered,
+  onChangeOwnerPassword,
   loggedInUser,
   onClearDeliveries,
   onAddDelivery,
@@ -438,46 +440,14 @@ export default function AdminPanel({
   };
 
   // Confirm password change workflow
-  const handleConfirmPasswordChange = (e: React.FormEvent) => {
+  const handleConfirmPasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isRecoveryCodeSent) {
-      alert('Debe solicitar el código de cambio primero.');
-      return;
-    }
-    if (countdown === 0) {
-      alert('El código ha expirado (límite de 5 minutos). Por favor solicite uno nuevo.');
-      return;
-    }
-    if (enteredRecoveryCode !== ownerPasswordChangeCode) {
-      alert('El código ingresado es incorrecto.');
-      return;
-    }
-    if (!newOwnerPassword) {
-      alert('Por favor ingrese una nueva contraseña.');
-      return;
-    }
-    if (newOwnerPassword !== confirmNewOwnerPassword) {
-      alert('Las contraseñas no coinciden.');
-      return;
-    }
-
-    // Success! Update password inside active tenant configuration
-    onUpdateTenant({
-      ...tenant,
-      adminPassword: newOwnerPassword,
-      location: configLocation,
-      phone: configPhone,
-      instagram: configInstagram,
-      licenseKey: configLicenseKey,
-      ownerName,
-      ownerPhone,
-      ownerEmail,
-      phonePrefix,
-      language
-    });
-
-    alert('Cambio hechos');
-    // Force logout as requested
+    if (!newOwnerPassword || newOwnerPassword.length < 6) { alert('La nueva contraseña debe tener al menos 6 caracteres.'); return; }
+    if (newOwnerPassword !== confirmNewOwnerPassword) { alert('Las contraseñas no coinciden.'); return; }
+    if (!onChangeOwnerPassword) { alert('El cambio de contraseña no está disponible en esta pantalla.'); return; }
+    const r = await onChangeOwnerPassword(newOwnerPassword);
+    if (!r.ok) { alert(r.msg || 'No se pudo cambiar la contraseña.'); return; }
+    alert('¡Contraseña cambiada! Ahora vas a volver a entrar con la nueva.');
     onLogout();
   };
 
@@ -2740,99 +2710,38 @@ export default function AdminPanel({
                 <div className="p-6 bg-[#141414] rounded-2xl border border-white/5 flex flex-col gap-4">
                   <div>
                     <h3 className="font-sans font-black text-sm text-white uppercase tracking-wider">Cambio de Contraseña</h3>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Modificación segura de la contraseña administrador.</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Cambia la contraseña real de acceso al panel. Al confirmar se cierra la sesión para volver a entrar con la nueva.</p>
                   </div>
-
-                  {ownerEmail ? (
-                    <div className="flex flex-col gap-3">
-                      {!isRecoveryCodeSent ? (
-                        <button
-                          id="btn-request-pw-code"
-                          type="button"
-                          onClick={handleRequestPasswordCode}
-                          className="w-full py-2 px-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold text-xs hover:bg-amber-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <Shield className="w-3.5 h-3.5" />
-                          <span>Solicitar Código de Cambio</span>
-                        </button>
-                      ) : (
-                        <div className="flex flex-col gap-3.5 bg-black/30 p-3 rounded-xl border border-white/5 animate-fadeIn">
-                          {/* Timer & Notification */}
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-amber-500 font-medium text-[10px] truncate">Código enviado a: {ownerEmail}</span>
-                            <span className="font-mono font-bold bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-                              ⏳ {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
-                            </span>
-                          </div>
-
-                          {countdown === 0 ? (
-                            <div className="text-center py-2 text-red-500 text-xs font-bold">
-                              El código de verificación ha expirado.
-                              <button
-                                type="button"
-                                onClick={handleRequestPasswordCode}
-                                className="block mx-auto mt-1.5 text-amber-500 underline text-[10px] cursor-pointer"
-                              >
-                                Volver a solicitar código
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-3">
-                              {/* Enter verification code */}
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase">Código de Verificación (6 dígitos)</label>
-                                <input
-                                  type="text"
-                                  maxLength={6}
-                                  value={enteredRecoveryCode}
-                                  onChange={(e) => setEnteredRecoveryCode(e.target.value)}
-                                  placeholder="Ej. 123456"
-                                  className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/10 bg-black/40 text-white font-mono text-center focus:outline-none"
-                                />
-                              </div>
-
-                              {/* New Password */}
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase">Nueva Contraseña</label>
-                                <input
-                                  type="password"
-                                  value={newOwnerPassword}
-                                  onChange={(e) => setNewOwnerPassword(e.target.value)}
-                                  placeholder="Contraseña nueva"
-                                  className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/10 bg-black/40 text-white focus:outline-none"
-                                />
-                              </div>
-
-                              {/* Confirm New Password */}
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase">Confirmar Nueva Contraseña</label>
-                                <input
-                                  type="password"
-                                  value={confirmNewOwnerPassword}
-                                  onChange={(e) => setConfirmNewOwnerPassword(e.target.value)}
-                                  placeholder="Repita la contraseña"
-                                  className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/10 bg-black/40 text-white focus:outline-none"
-                                />
-                              </div>
-
-                              <button
-                                id="btn-confirm-pw-change"
-                                type="button"
-                                onClick={handleConfirmPasswordChange}
-                                className="w-full py-2 px-3 rounded-lg bg-green-600 text-white font-bold text-[11px] hover:bg-green-500 transition-all cursor-pointer mt-1"
-                              >
-                                Confirmar Cambio y Guardar
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase">Nueva Contraseña (mínimo 6)</label>
+                      <input
+                        type="password"
+                        value={newOwnerPassword}
+                        onChange={(e) => setNewOwnerPassword(e.target.value)}
+                        placeholder="Contraseña nueva"
+                        className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/10 bg-black/40 text-white focus:outline-none"
+                      />
                     </div>
-                  ) : (
-                    <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-[11px] text-gray-400 text-center leading-relaxed">
-                      ⚠️ Debe ingresar el mail de contacto del inquilino a la izquierda para poder habilitar las opciones de cambio de contraseña.
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase">Confirmar Nueva Contraseña</label>
+                      <input
+                        type="password"
+                        value={confirmNewOwnerPassword}
+                        onChange={(e) => setConfirmNewOwnerPassword(e.target.value)}
+                        placeholder="Repita la contraseña"
+                        className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/10 bg-black/40 text-white focus:outline-none"
+                      />
                     </div>
-                  )}
+                    <button
+                      id="btn-confirm-pw-change"
+                      type="button"
+                      onClick={handleConfirmPasswordChange}
+                      className="w-full py-2 px-3 rounded-lg bg-green-600 text-white font-bold text-[11px] hover:bg-green-500 transition-all cursor-pointer mt-1"
+                    >
+                      Cambiar contraseña
+                    </button>
+                  </div>
                 </div>
 
                 {/* Save button */}
