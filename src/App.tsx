@@ -3,7 +3,7 @@ import {
   INITIAL_TENANTS, INITIAL_PRODUCTS, INITIAL_COMMENTS, 
   INITIAL_COLLABORATORS, DEFAULT_CATEGORIES, generateMockDeliveries
 } from './mockData';
-import { TenantConfig, Product, Comment, Collaborator, CartItem, Delivery } from './types';
+import { TenantConfig, Product, Comment, Collaborator, CartItem, Delivery, RetiroOrder } from './types';
 import Header from './components/Header';
 import Banner from './components/Banner';
 import CategoryMenu from './components/CategoryMenu';
@@ -13,7 +13,7 @@ import FooterComments from './components/FooterComments';
 import AdminLoginModal from './components/AdminLoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductDetailsModal from './components/ProductDetailsModal';
-import { cloudLoad, cloudSave, clotPublica, CloudData } from './lib/cloud';
+import { cloudLoad, cloudSave, clotPublica, clotAgregarPedido, CloudData } from './lib/cloud';
 import { Sparkles, MapPin, X, Info } from 'lucide-react';
 
 export default function App() {
@@ -21,6 +21,7 @@ export default function App() {
   const [tenants, setTenants] = useState<TenantConfig[]>([]);
   const [activeTenantId, setActiveTenantId] = useState('cyc-elegance');
   const [cloudCodigo, setCloudCodigo] = useState<string | null>(null);
+  const [retiroOrders, setRetiroOrders] = useState<RetiroOrder[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
@@ -223,6 +224,7 @@ export default function App() {
         if (data.collaborators) saveCollaborators(data.collaborators as Collaborator[]);
         if (data.deliveries) saveDeliveries(data.deliveries as Delivery[]);
         if (data.categories) saveCategories(data.categories as string[]);
+        if (data.retiroOrders) setRetiroOrders(data.retiroOrders as RetiroOrder[]);
         setActiveTenantId(codigo);
       } else {
         // Licencia nueva: clonamos la tienda activa como tienda de esta licencia
@@ -245,11 +247,36 @@ export default function App() {
         collaborators: collaborators.filter((c) => c.tenantId === cloudCodigo),
         deliveries: deliveries.filter((d) => d.tenantId === cloudCodigo),
         categories,
+        retiroOrders: retiroOrders.filter((o) => o.tenantId === cloudCodigo),
       };
       cloudSave(cloudCodigo, datos);
     }, 1500);
     return () => clearTimeout(t);
-  }, [cloudCodigo, isAdminLoggedIn, tenants, products, comments, collaborators, deliveries, categories]);
+  }, [cloudCodigo, isAdminLoggedIn, tenants, products, comments, collaborators, deliveries, categories, retiroOrders]);
+
+  // Poll de encargos entrantes (sincroniza pública -> panel) cada 12s
+  useEffect(() => {
+    if (!cloudCodigo || !isAdminLoggedIn) return;
+    const iv = setInterval(() => {
+      cloudLoad(cloudCodigo).then((data) => {
+        if (data && data.retiroOrders) {
+          setRetiroOrders((prev) => {
+            const ids = new Set(prev.map((o) => o.id));
+            const nuevos = (data.retiroOrders as RetiroOrder[]).filter((o) => !ids.has(o.id));
+            return nuevos.length ? [...nuevos, ...prev] : prev;
+          });
+        }
+      });
+    }, 12000);
+    return () => clearInterval(iv);
+  }, [cloudCodigo, isAdminLoggedIn]);
+
+  // Cliente confirma un encargo desde la pública -> lo guarda en la nube
+  const handlePlaceOrder = (order: RetiroOrder) => {
+    if (!activeTenantId) return;
+    clotAgregarPedido(activeTenantId, order);
+    setRetiroOrders((prev) => [order, ...prev]);
+  };
 
   // --- CART MUTATIONS ---
   const handleAddToCart = (product: Product, size = 'M') => {
@@ -404,6 +431,7 @@ export default function App() {
           collaborators={collaborators}
           categories={categories}
           deliveries={deliveries}
+          retiroOrders={retiroOrders}
           loggedInUser={loggedInUser || { name: 'Admin Inquilino', role: 'admin', email: 'admin@cyc.com' }}
           onClearDeliveries={saveDeliveries}
           onAddDelivery={(newDel) => {
@@ -535,6 +563,7 @@ export default function App() {
         onRemoveItem={handleRemoveCartItem}
         onClearCart={handleClearCart}
         tenant={activeTenant}
+        onPlaceOrder={handlePlaceOrder}
       />
 
       {/* Secure Shield Admin Portal Verification Modal */}

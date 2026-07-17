@@ -92,3 +92,16 @@ export type Delivery = {
   deliveredBy: string; // Name of the person who made the delivery
 };
 
+
+export type RetiroOrder = {
+  id: string;
+  code: string;
+  tenantId: string;
+  date: string; // ISO
+  clientName: string;
+  clientPhone: string;
+  clientEmail?: string;
+  items: { name: string; quantity: number; size?: string; price: number }[];
+  total: number;
+  status: 'nuevo' | 'entregado';
+};
