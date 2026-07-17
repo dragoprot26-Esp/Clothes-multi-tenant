@@ -1697,6 +1697,11 @@ export default function AdminPanel({
             </div>
 
             {/* Products Table/List */}
+            {tenantProducts.length === 0 && (
+              <div id="products-empty" className="p-6 text-center text-gray-500 text-sm bg-[#141414] rounded-2xl border border-white/5">
+                Todavía no cargaste prendas para esta tienda. Usá "Nuevo Producto" o "Escanear QR/Barra" para agregar la primera.
+              </div>
+            )}
             <div className="bg-[#141414] rounded-2xl border border-white/5 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
