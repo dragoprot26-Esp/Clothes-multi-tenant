@@ -78,7 +78,7 @@ export default function Header({
         {/* SHOPPING CART IN THE DEAD MIDDLE */}
         <div 
           id="header-cart-middle"
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
+          className="md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-10 mx-2"
         >
           {isCyc ? (
             <button
@@ -119,7 +119,7 @@ export default function Header({
         </div>
 
         {/* RIGHT ACTIONS Bar (Compartir, Ubicacion, Escudito Admin) */}
-        <div id="header-right-actions" className="flex items-center gap-2 sm:gap-4">
+        <div id="header-right-actions" className="flex items-center gap-2.5 sm:gap-4 shrink-0">
           {/* SHARE BUTTON */}
           <button
             id="btn-share-page"
