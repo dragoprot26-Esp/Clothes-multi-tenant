@@ -24,9 +24,9 @@ export default function ProductDetailsModal({
   const isCyc = tenant.id === 'cyc-elegance';
 
   const defaultSizes = ['S', 'M', 'L', 'XL'];
-  const availableSizes = product.sizes && product.sizes.length > 0 ? product.sizes : defaultSizes;
+  const availableSizes = product.sizes && product.sizes.length > 0 ? product.sizes : [];
 
-  const [selectedSize, setSelectedSize] = useState<string>(availableSizes[0] || 'M');
+  const [selectedSize, setSelectedSize] = useState<string>(availableSizes[0] || '');
   const [quantity, setQuantity] = useState<number>(1);
   const [currentImgIndex, setCurrentImgIndex] = useState<number>(0);
   const [added, setAdded] = useState<boolean>(false);
@@ -224,7 +224,7 @@ export default function ProductDetailsModal({
             )}
 
             {/* Sizes Selectable */}
-            {product.stock > 0 && (
+            {product.stock > 0 && availableSizes.length > 0 && (
               <div className="flex flex-col gap-2">
                 <h4 className="text-xs uppercase font-bold text-zinc-400 tracking-wider">Talles Disponibles</h4>
                 <div className="flex gap-2 flex-wrap">

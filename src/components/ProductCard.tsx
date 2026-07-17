@@ -13,8 +13,8 @@ interface ProductCardProps {
 export default function ProductCard({ product, tenant, onAddToCart, onSelectProduct }: ProductCardProps) {
   const isCyc = tenant.id === 'cyc-elegance';
   const defaultSizes = ['S', 'M', 'L', 'XL'];
-  const sizes = product.sizes && product.sizes.length > 0 ? product.sizes : defaultSizes;
-  const [selectedSize, setSelectedSize] = useState<string>(sizes[0] || 'M');
+  const sizes = product.sizes && product.sizes.length > 0 ? product.sizes : [];
+  const [selectedSize, setSelectedSize] = useState<string>(sizes[0] || '');
   const [added, setAdded] = useState(false);
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   
@@ -135,7 +135,7 @@ export default function ProductCard({ product, tenant, onAddToCart, onSelectProd
           </div>
 
           {/* SIZES */}
-          {product.stock > 0 && (
+          {product.stock > 0 && sizes.length > 0 && (
             <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">Talle:</span>
               <div className="flex gap-1">
