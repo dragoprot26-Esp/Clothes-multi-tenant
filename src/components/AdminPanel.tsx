@@ -7,31 +7,56 @@ import {
 import { TenantConfig, Product, Comment, Collaborator, Delivery, RetiroOrder } from '../types';
 import BarcodeScannerModal from './BarcodeScannerModal';
 
-// Comprime una imagen (redimensiona + JPEG) para que no pese de más y sincronice bien a la nube.
-async function comprimirImagen(file: File, maxLado = 1000, calidad = 0.8): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let width = img.width, height = img.height;
-        if (width > maxLado || height > maxLado) {
-          if (width >= height) { height = Math.round(height * maxLado / width); width = maxLado; }
-          else { width = Math.round(width * maxLado / height); height = maxLado; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { resolve(reader.result as string); return; }
-        ctx.drawImage(img, 0, 0, width, height);
-        try { resolve(canvas.toDataURL('image/jpeg', calidad)); } catch (e) { resolve(reader.result as string); }
+// Comprime una imagen (redimensiona + JPEG). Usa createImageBitmap (maneja HEIC de iPhone,
+// orientación y fotos grandes) con respaldo a <img>. Si todo falla, devuelve '' para poder avisar.
+async function comprimirImagen(file: File, maxLado = 900, calidad = 0.72): Promise<string> {
+  const dibujar = (w0: number, h0: number, draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void): string => {
+    let width = w0, height = h0;
+    if (!width || !height) return '';
+    if (width > maxLado || height > maxLado) {
+      if (width >= height) { height = Math.round(height * maxLado / width); width = maxLado; }
+      else { width = Math.round(width * maxLado / height); height = maxLado; }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    draw(ctx, width, height);
+    let q = calidad;
+    let out = canvas.toDataURL('image/jpeg', q);
+    while (out.length > 1200000 && q > 0.4) { q -= 0.15; out = canvas.toDataURL('image/jpeg', q); }
+    return out && out.length > 100 ? out : '';
+  };
+
+  // 1) createImageBitmap (mejor soporte en móvil)
+  try {
+    if (typeof createImageBitmap === 'function') {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' } as any);
+      const out = dibujar(bitmap.width, bitmap.height, (ctx, w, h) => ctx.drawImage(bitmap, 0, 0, w, h));
+      if ((bitmap as any).close) (bitmap as any).close();
+      if (out) return out;
+    }
+  } catch (e) { /* sigue al respaldo */ }
+
+  // 2) Respaldo con <img> + FileReader
+  try {
+    const out = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve(dibujar(img.width, img.height, (ctx, w, h) => ctx.drawImage(img, 0, 0, w, h)));
+        img.onerror = () => resolve('');
+        img.src = reader.result as string;
       };
-      img.onerror = () => resolve(reader.result as string);
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => resolve('');
-    reader.readAsDataURL(file);
-  });
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+    if (out) return out;
+  } catch (e) { /* nada */ }
+
+  return '';
 }
 
 interface AdminPanelProps {
@@ -2998,8 +3023,8 @@ export default function AdminPanel({
                     
                     const handleImageFileChange = async (index: number, file: File | null) => {
                       if (!file) return;
-                      const result = await comprimirImagen(file, 1000, 0.8);
-                      if (!result) return;
+                      const result = await comprimirImagen(file, 900, 0.72);
+                      if (!result) { alert('No se pudo procesar esta foto (formato no soportado o muy grande). Probá con otra o elegila desde la galería.'); return; }
                       const nextUrls = [...prodImageUrls];
                       nextUrls[index] = result;
                       setProdImageUrls(nextUrls);
