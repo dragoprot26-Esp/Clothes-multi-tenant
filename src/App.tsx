@@ -13,7 +13,7 @@ import FooterComments from './components/FooterComments';
 import AdminLoginModal from './components/AdminLoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductDetailsModal from './components/ProductDetailsModal';
-import { cloudLoad, cloudSave, CloudData } from './lib/cloud';
+import { cloudLoad, cloudSave, clotPublica, CloudData } from './lib/cloud';
 import { Sparkles, MapPin, X, Info } from 'lucide-react';
 
 export default function App() {
@@ -115,6 +115,28 @@ export default function App() {
       setDeliveries(generated);
       localStorage.setItem('cyc_pwa_deliveries', JSON.stringify(generated));
     }
+  }, []);
+
+  // --- PÁGINA PÚBLICA POR ?codigo= (molde CyC) ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const codigo = (params.get('codigo') || params.get('tenant') || '').toUpperCase();
+    if (!codigo) return;
+    clotPublica(codigo).then((data) => {
+      if (!data) return;
+      if (data.tenants && data.tenants.length) {
+        const cloudTenants = data.tenants as TenantConfig[];
+        setTenants((prev) => {
+          const otros = prev.filter((t) => !cloudTenants.some((ct) => ct.id === t.id));
+          return [...cloudTenants, ...otros];
+        });
+      }
+      if (data.products) setProducts(data.products as Product[]);
+      if (data.comments) setComments(data.comments as Comment[]);
+      if (data.categories && data.categories.length) setCategories(data.categories as string[]);
+      setActiveTenantId(codigo);
+      setIsAdminLoggedIn(false);
+    });
   }, []);
 
   // Monitor force logout of collaborators in real-time
