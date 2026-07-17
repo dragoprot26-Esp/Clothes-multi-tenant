@@ -20,7 +20,9 @@
     "vite": "^6.2.3",
     "express": "^4.21.2",
     "dotenv": "^17.2.3",
-    "motion": "^12.23.24"
+    "motion": "^12.23.24",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
