@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, X, Play, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import { Camera, X, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import { Product } from '../types';
 
 interface BarcodeScannerModalProps {
@@ -21,69 +22,75 @@ export default function BarcodeScannerModal({
   const [isScanning, setIsScanning] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const controlsRef = useRef<any>(null);
+  const handledRef = useRef(false);
   const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'not-found'>('idle');
   const [scannedValue, setScannedValue] = useState('');
 
-  // Beep sound generator using Web Audio API (No files needed!)
+  // Beep con Web Audio API (sin archivos)
   const playBeep = (type: 'success' | 'new') => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
-
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-
       if (type === 'success') {
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
         gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.15);
       } else {
         oscillator.type = 'triangle';
-        oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // A4 note
+        oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
         gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.3);
       }
-    } catch (e) {
-      console.log('Audio Context error (benign):', e);
-    }
+    } catch (e) { /* benigno */ }
   };
 
-  // Start real web camera feed
+  // Arranca la camara + decodificador real (ZXing) con autofoco continuo
   const startCamera = async () => {
     try {
       setHasCameraPermission(null);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Prefer back camera
-      });
-      
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
+      handledRef.current = false;
+      const reader = new BrowserMultiFormatReader();
+      readerRef.current = reader;
+      const controls = await reader.decodeFromConstraints(
+        { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+        videoRef.current as HTMLVideoElement,
+        (result) => {
+          if (result && !handledRef.current) {
+            handledRef.current = true;
+            handleScanCode(result.getText());
+          }
+        }
+      );
+      controlsRef.current = controls;
       setHasCameraPermission(true);
       setIsScanning(true);
+      // Autofoco continuo (algunos equipos no lo permiten: se ignora)
+      try {
+        const stream = videoRef.current?.srcObject as MediaStream | null;
+        const track = stream?.getVideoTracks?.()[0];
+        if (track && (track as any).applyConstraints) {
+          await (track as any).applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        }
+      } catch (e) { /* noop */ }
     } catch (err) {
-      console.warn('Camera access denied or unavailable:', err);
       setHasCameraPermission(false);
     }
   };
 
-  // Stop camera feed
   const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
+    try { controlsRef.current?.stop(); } catch (e) { /* noop */ }
+    controlsRef.current = null;
+    const stream = videoRef.current?.srcObject as MediaStream | null;
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    if (videoRef.current) videoRef.current.srcObject = null;
     setIsScanning(false);
   };
 
@@ -92,42 +99,25 @@ export default function BarcodeScannerModal({
     return () => stopCamera();
   }, []);
 
-  // Reengancha el stream cuando el <video> ya esta en el DOM (evita pantalla negra en movil)
-  useEffect(() => {
-    if (hasCameraPermission === true && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
-      videoRef.current.play().catch(() => {});
-    }
-  }, [hasCameraPermission, isScanning]);
-
   const handleScanCode = (code: string) => {
     if (!code.trim()) return;
     setScannedValue(code);
-
     const match = products.find((p) => p.barcode === code.trim());
     if (match) {
       setScanStatus('success');
       playBeep('success');
-      setTimeout(() => {
-        onScanSuccess(code, match);
-        onClose();
-      }, 1000);
+      setTimeout(() => { onScanSuccess(code, match); onClose(); }, 1000);
     } else {
       setScanStatus('not-found');
       playBeep('new');
-      setTimeout(() => {
-        onScanSuccess(code); // Trigger callback to create product
-        onClose();
-      }, 1500);
+      setTimeout(() => { onScanSuccess(code); onClose(); }, 1500);
     }
   };
 
   return (
     <div id="barcode-scanner-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div onClick={onClose} className="absolute inset-0 bg-black/90 backdrop-blur-md cursor-pointer" />
 
-      {/* Main Panel */}
       <div className="relative bg-[#121212] border border-yellow-600/30 rounded-3xl w-full max-w-lg p-6 sm:p-8 flex flex-col gap-6 text-left shadow-2xl z-10 text-gray-300">
         <button
           id="btn-close-scanner"
@@ -142,43 +132,43 @@ export default function BarcodeScannerModal({
             <Camera className="w-5 h-5" /> Escáner de Productos (Móvil/PC)
           </h3>
           <p className="text-xs text-gray-400 mt-1">
-            Escanea el código de barras o QR de tus prendas. Si el producto ya existe se abrirá para editar, de lo contrario se abrirá la creación con el código precargado.
+            Apuntá al código de barras o QR. Si el producto ya existe se abre para editar; si no, se abre la creación con el código precargado.
           </p>
         </div>
 
-        {/* Camera Container / Laser Screen */}
-        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 flex flex-col items-center justify-center">
-          {hasCameraPermission === true ? (
-            <>
-              <video
-                ref={videoRef}
-                className="w-full h-full object-cover"
-                autoPlay
-                playsInline
-                muted
-              />
-              
-              {/* Animated scanning laser guide */}
-              <div className="absolute inset-0 border-2 border-dashed border-amber-500/30 m-8 rounded-lg flex items-center justify-center pointer-events-none">
-                <div className="w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-bounce" />
-              </div>
-            </>
-          ) : hasCameraPermission === false ? (
-            <div className="p-6 text-center flex flex-col items-center gap-2">
+        {/* Camara + decodificador (video SIEMPRE montado para evitar pantalla negra) */}
+        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-white/10 flex items-center justify-center">
+          <video
+            ref={videoRef}
+            className="w-full h-full object-cover"
+            autoPlay
+            playsInline
+            muted
+          />
+
+          {hasCameraPermission === true && scanStatus === 'idle' && (
+            <div className="absolute inset-0 border-2 border-dashed border-amber-500/30 m-8 rounded-lg flex items-center justify-center pointer-events-none">
+              <div className="w-full h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-bounce" />
+            </div>
+          )}
+
+          {hasCameraPermission === false && (
+            <div className="absolute inset-0 bg-black/85 p-6 text-center flex flex-col items-center justify-center gap-2">
               <AlertCircle className="w-8 h-8 text-yellow-500" />
-              <span className="text-xs font-bold text-white">Cámara física no disponible</span>
-              <p className="text-[10px] text-gray-500 leading-relaxed max-w-xs">
-                La cámara está bloqueada o no se detecta. ¡No te preocupes! Puedes utilizar los simuladores rápidos de abajo o tipear manualmente.
+              <span className="text-xs font-bold text-white">Cámara no disponible</span>
+              <p className="text-[10px] text-gray-400 leading-relaxed max-w-xs">
+                Está bloqueada o no se detecta. Usá el ingreso manual o los simuladores de abajo. (En iPhone abrí desde Safari y dale permiso de cámara.)
               </p>
             </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-gray-500">
+          )}
+
+          {hasCameraPermission === null && (
+            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 text-gray-400">
               <RefreshCw className="w-6 h-6 animate-spin" />
               <span className="text-xs">Inicializando cámara...</span>
             </div>
           )}
 
-          {/* Overlay Status Feedback */}
           {scanStatus === 'success' && (
             <div className="absolute inset-0 bg-green-500/80 flex flex-col items-center justify-center text-black font-black text-sm uppercase tracking-wider animate-fadeIn">
               <span>¡Prenda Encontrada!</span>
@@ -197,7 +187,7 @@ export default function BarcodeScannerModal({
           )}
         </div>
 
-        {/* Manual Barcode input */}
+        {/* Ingreso manual */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[10px] font-bold text-gray-400 uppercase">Ingreso de Código Manual</label>
           <div className="flex gap-2">
@@ -218,13 +208,12 @@ export default function BarcodeScannerModal({
           </div>
         </div>
 
-        {/* Simulation Buttons - Critical for effortless platform review */}
+        {/* Simuladores de escaneo */}
         <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col gap-3">
           <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-amber-500">
             <Sparkles className="w-4 h-4 animate-pulse" />
             <span>Simulador de escaneo rápido (Prueba el flujo)</span>
           </div>
-          
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleScanCode('7791234567890')}
@@ -233,7 +222,6 @@ export default function BarcodeScannerModal({
               <span className="block font-bold text-white">Escanear Existente</span>
               <span className="block text-[10px] text-gray-500 font-mono">Cód: 7791234567890</span>
             </button>
-
             <button
               onClick={() => handleScanCode(`779-${Date.now()}`)}
               className="p-2.5 rounded-xl border border-dashed border-yellow-500/20 bg-yellow-950/20 hover:bg-yellow-950/40 text-left text-[11px] transition-all cursor-pointer"
