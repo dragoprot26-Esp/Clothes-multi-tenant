@@ -92,6 +92,14 @@ export default function BarcodeScannerModal({
     return () => stopCamera();
   }, []);
 
+  // Reengancha el stream cuando el <video> ya esta en el DOM (evita pantalla negra en movil)
+  useEffect(() => {
+    if (hasCameraPermission === true && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [hasCameraPermission, isScanning]);
+
   const handleScanCode = (code: string) => {
     if (!code.trim()) return;
     setScannedValue(code);
@@ -145,6 +153,7 @@ export default function BarcodeScannerModal({
               <video
                 ref={videoRef}
                 className="w-full h-full object-cover"
+                autoPlay
                 playsInline
                 muted
               />
