@@ -235,28 +235,29 @@ export default function App() {
     const codigo = (user.codigo || '').toUpperCase();
     if (!codigo) return;
     setCloudCodigo(codigo);
+    // Síncrono: asegurar la tienda de esta licencia y activarla YA (evita la ventana con el inquilino demo)
+    setTenants((prev) => {
+      if (prev.some((t) => t.id === codigo)) return prev;
+      const base = prev.find((t) => t.id === activeTenantId) || INITIAL_TENANTS[0];
+      return [{ ...base, id: codigo, licenseKey: codigo }, ...prev];
+    });
+    setActiveTenantId(codigo);
+    // Asíncrono: hidratar desde la nube TODO lo que exista para esta licencia
     cloudLoad(codigo).then((data) => {
-      const tieneDatos = !!(data && ((data.products && data.products.length) || (data.tenants && data.tenants.length) || (data.collaborators && data.collaborators.length)));
-      if (tieneDatos && data) {
-        if (data.tenants && data.tenants.length) {
-          const cloudTenants = data.tenants as TenantConfig[];
-          const otros = tenants.filter((t) => !cloudTenants.some((ct) => ct.id === t.id));
-          saveTenants([...cloudTenants, ...otros]);
-        }
-        if (data.products) saveProducts(data.products as Product[]);
-        if (data.comments) saveComments(data.comments as Comment[]);
-        if (data.collaborators) saveCollaborators(data.collaborators as Collaborator[]);
-        if (data.deliveries) saveDeliveries(data.deliveries as Delivery[]);
-        if (data.categories) saveCategories(data.categories as string[]);
-        if (data.retiroOrders) setRetiroOrders(data.retiroOrders as RetiroOrder[]);
-        setActiveTenantId(codigo);
-      } else {
-        // Licencia nueva: clonamos la tienda activa como tienda de esta licencia
-        const base = tenants.find((t) => t.id === activeTenantId) || INITIAL_TENANTS[0];
-        const nuevo: TenantConfig = { ...base, id: codigo, licenseKey: codigo };
-        saveTenants([nuevo, ...tenants.filter((t) => t.id !== codigo)]);
-        setActiveTenantId(codigo);
+      if (!data) return;
+      if (data.tenants && data.tenants.length) {
+        const cloudTenants = data.tenants as TenantConfig[];
+        setTenants((prev) => {
+          const otros = prev.filter((t) => !cloudTenants.some((ct) => ct.id === t.id));
+          return [...cloudTenants, ...otros];
+        });
       }
+      if (data.products) saveProducts(data.products as Product[]);
+      if (data.comments) saveComments(data.comments as Comment[]);
+      if (data.collaborators) saveCollaborators(data.collaborators as Collaborator[]);
+      if (data.deliveries) saveDeliveries(data.deliveries as Delivery[]);
+      if (data.categories && data.categories.length) saveCategories(data.categories as string[]);
+      if (data.retiroOrders) setRetiroOrders(data.retiroOrders as RetiroOrder[]);
     });
   };
 
