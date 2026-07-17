@@ -7,6 +7,33 @@ import {
 import { TenantConfig, Product, Comment, Collaborator, Delivery, RetiroOrder } from '../types';
 import BarcodeScannerModal from './BarcodeScannerModal';
 
+// Comprime una imagen (redimensiona + JPEG) para que no pese de más y sincronice bien a la nube.
+async function comprimirImagen(file: File, maxLado = 1000, calidad = 0.8): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width, height = img.height;
+        if (width > maxLado || height > maxLado) {
+          if (width >= height) { height = Math.round(height * maxLado / width); width = maxLado; }
+          else { width = Math.round(width * maxLado / height); height = maxLado; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(reader.result as string); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        try { resolve(canvas.toDataURL('image/jpeg', calidad)); } catch (e) { resolve(reader.result as string); }
+      };
+      img.onerror = () => resolve(reader.result as string);
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
+
 interface AdminPanelProps {
   tenant: TenantConfig;
   products: Product[];
@@ -275,38 +302,18 @@ export default function AdminPanel({
   };
 
   // Convert uploaded image files to base64 strings and set state
-  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("La imagen es demasiado grande. Por favor elija una imagen menor a 2MB.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setTenantLogoUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const result = await comprimirImagen(file, 400, 0.85);
+    if (result) setTenantLogoUrl(result);
   };
 
-  const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        alert("La imagen es demasiado grande. Por favor elija una imagen menor a 3MB.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setTenantBannerUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const result = await comprimirImagen(file, 1400, 0.8);
+    if (result) setTenantBannerUrl(result);
   };
 
   // Handle tenant settings updates (Page Theme & Layout)
@@ -2989,21 +2996,14 @@ export default function AdminPanel({
                   {Array.from({ length: 5 }).map((_, idx) => {
                     const currentUrl = prodImageUrls[idx] || '';
                     
-                    const handleImageFileChange = (index: number, file: File | null) => {
+                    const handleImageFileChange = async (index: number, file: File | null) => {
                       if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        const result = event.target?.result as string;
-                        if (result) {
-                          const nextUrls = [...prodImageUrls];
-                          nextUrls[index] = result;
-                          setProdImageUrls(nextUrls);
-                          if (index === 0) {
-                            setProdImageUrl(result);
-                          }
-                        }
-                      };
-                      reader.readAsDataURL(file);
+                      const result = await comprimirImagen(file, 1000, 0.8);
+                      if (!result) return;
+                      const nextUrls = [...prodImageUrls];
+                      nextUrls[index] = result;
+                      setProdImageUrls(nextUrls);
+                      if (index === 0) setProdImageUrl(result);
                     };
 
                     return (
