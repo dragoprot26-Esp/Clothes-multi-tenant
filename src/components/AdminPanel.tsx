@@ -230,10 +230,12 @@ export default function AdminPanel({
   // Save product (either new or edited)
   const handleSaveProductSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prodName || !prodPrice || !prodImageUrl) return;
+    if (!prodName.trim()) { alert('Poné el nombre de la prenda.'); return; }
+    if (!prodPrice || prodPrice <= 0) { alert('Poné un precio válido (mayor a 0).'); return; }
 
-    // Filtrar enlaces vacíos de la lista de imágenes
+    // Imagen: usa la subida/URL; si no hay ninguna, deja un placeholder (no bloquea el guardado)
     const activeImageUrls = prodImageUrls.filter((url) => url.trim() !== '');
+    const mainImg = (prodImageUrl && prodImageUrl.trim()) || activeImageUrls[0] || 'https://via.placeholder.com/500x600?text=Prenda';
 
     if (editingProduct) {
       onEditProduct({
@@ -242,8 +244,8 @@ export default function AdminPanel({
         price: prodPrice,
         category: prodCategory,
         description: prodDescription,
-        imageUrl: activeImageUrls[0] || prodImageUrl,
-        imageUrls: activeImageUrls.length > 0 ? activeImageUrls : [prodImageUrl],
+        imageUrl: mainImg,
+        imageUrls: activeImageUrls.length > 0 ? activeImageUrls : [mainImg],
         sizes: prodSizes,
         extraFields: prodExtraFields,
         barcode: prodBarcode,
@@ -257,8 +259,8 @@ export default function AdminPanel({
         price: prodPrice,
         category: prodCategory,
         description: prodDescription,
-        imageUrl: activeImageUrls[0] || prodImageUrl,
-        imageUrls: activeImageUrls.length > 0 ? activeImageUrls : [prodImageUrl],
+        imageUrl: mainImg,
+        imageUrls: activeImageUrls.length > 0 ? activeImageUrls : [mainImg],
         sizes: prodSizes,
         extraFields: prodExtraFields,
         barcode: prodBarcode,
