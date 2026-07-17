@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Package, Palette, LayoutGrid, Users, Settings, TrendingUp, 
   Plus, Trash2, Edit, Check, X, Shield, Star, LogOut, Image, MapPin, Phone, Instagram, Scan, PlusCircle, MinusCircle, Upload, Eye, MessageSquare,
-  Download, FileSpreadsheet, Trash, Calendar, DollarSign, UserCheck, Fingerprint, User, Database, Printer, RefreshCw, ShoppingBag
+  Download, FileSpreadsheet, Trash, Calendar, DollarSign, UserCheck, Fingerprint, User, Database, Printer, RefreshCw, ShoppingBag, Camera
 } from 'lucide-react';
 import { TenantConfig, Product, Comment, Collaborator, Delivery, RetiroOrder } from '../types';
 import BarcodeScannerModal from './BarcodeScannerModal';
@@ -2931,8 +2931,8 @@ export default function AdminPanel({
                   id="prod-input-price"
                   type="number"
                   required
-                  value={prodPrice}
-                  onChange={(e) => setProdPrice(Number(e.target.value))}
+                  value={prodPrice === 0 ? '' : prodPrice}
+                  onChange={(e) => setProdPrice(e.target.value === '' ? 0 : Number(e.target.value))}
                   placeholder="48000"
                   className="w-full px-3 py-2 text-xs rounded-xl border border-white/10 bg-black/40 text-white focus:outline-none"
                 />
@@ -3043,6 +3043,20 @@ export default function AdminPanel({
                             <input
                               type="file"
                               accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                handleImageFileChange(idx, file);
+                              }}
+                            />
+                          </label>
+                          <label className="sm:hidden flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 font-bold cursor-pointer text-[10px] transition-colors">
+                            <Camera className="w-3 h-3" />
+                            <span>Tomar foto</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
                               className="hidden"
                               onChange={(e) => {
                                 const file = e.target.files?.[0] || null;
