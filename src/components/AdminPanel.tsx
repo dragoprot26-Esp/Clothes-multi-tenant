@@ -193,7 +193,7 @@ export default function AdminPanel({
       'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=500',
       '', '', '', ''
     ]);
-    setProdSizes(['S', 'M', 'L', 'XL']);
+    setProdSizes([]);
     setProdExtraFields([]);
     setProdBarcode('');
     setProdIsPromo(false);
@@ -218,7 +218,7 @@ export default function AdminPanel({
     }
     setProdImageUrls(urls.slice(0, 5));
     
-    setProdSizes(prod.sizes || ['S', 'M', 'L', 'XL']);
+    setProdSizes(prod.sizes || []);
     setProdExtraFields(prod.extraFields || []);
     setProdBarcode(prod.barcode || '');
     setProdIsPromo(prod.isPromo);
