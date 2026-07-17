@@ -22,6 +22,7 @@ export default function App() {
   const [activeTenantId, setActiveTenantId] = useState('cyc-elegance');
   const [cloudCodigo, setCloudCodigo] = useState<string | null>(null);
   const [retiroOrders, setRetiroOrders] = useState<RetiroOrder[]>([]);
+  const [publicCodigo, setPublicCodigo] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
@@ -123,6 +124,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const codigo = (params.get('codigo') || params.get('tenant') || '').toUpperCase();
     if (!codigo) return;
+    setPublicCodigo(codigo);
     clotPublica(codigo).then((data) => {
       if (!data) return;
       if (data.tenants && data.tenants.length) {
@@ -139,6 +141,28 @@ export default function App() {
       setIsAdminLoggedIn(false);
     });
   }, []);
+
+  // Página pública: refresco en vivo del catálogo/comentarios/tema (sin recargar).
+  // Se PAUSA mientras el carrito está abierto para no molestar al cliente que está encargando.
+  useEffect(() => {
+    if (!publicCodigo || isAdminLoggedIn || isCartOpen) return;
+    const iv = setInterval(() => {
+      clotPublica(publicCodigo).then((data) => {
+        if (!data) return;
+        if (data.tenants && data.tenants.length) {
+          const cloudTenants = data.tenants as TenantConfig[];
+          setTenants((prev) => {
+            const otros = prev.filter((t) => !cloudTenants.some((ct) => ct.id === t.id));
+            return [...cloudTenants, ...otros];
+          });
+        }
+        if (data.products) setProducts(data.products as Product[]);
+        if (data.comments) setComments(data.comments as Comment[]);
+        if (data.categories && data.categories.length) setCategories(data.categories as string[]);
+      });
+    }, 15000);
+    return () => clearInterval(iv);
+  }, [publicCodigo, isAdminLoggedIn, isCartOpen]);
 
   // Monitor force logout of collaborators in real-time
   useEffect(() => {
