@@ -3226,10 +3226,11 @@ export default function AdminPanel({
               </button>
               <button
                 id="btn-save-product-modal"
-                type="submit"
+                type="button"
+                onClick={handleSaveProductSubmit}
                 className="py-2.5 px-6 rounded-xl bg-amber-500 text-black font-extrabold hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
-                {editingProduct ? 'Guardar Cambios' : 'Añadir Prenda'}
+                {editingProduct ? 'Guardar Cambios' : 'Agregar producto'}
               </button>
             </div>
           </form>
