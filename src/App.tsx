@@ -13,7 +13,7 @@ import FooterComments from './components/FooterComments';
 import AdminLoginModal from './components/AdminLoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductDetailsModal from './components/ProductDetailsModal';
-import { cloudLoad, cloudSave, clotPublica, clotAgregarPedido, clotAgregarResena, CloudData } from './lib/cloud';
+import { cloudLoad, cloudSave, clotPublica, clotAgregarPedido, clotAgregarResena, cambiarPasswordDueno, CloudData } from './lib/cloud';
 import { Sparkles, MapPin, X, Info } from 'lucide-react';
 
 export default function App() {
@@ -314,6 +314,8 @@ export default function App() {
     setRetiroOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: 'entregado' } : o)));
   };
 
+  const handleChangeOwnerPassword = (newPassword: string) => cambiarPasswordDueno(cloudCodigo || activeTenantId, newPassword);
+
   // --- CART MUTATIONS ---
   const handleAddToCart = (product: Product, size = 'M') => {
     const updatedCart = [...activeCart];
@@ -470,6 +472,7 @@ export default function App() {
           deliveries={deliveries}
           retiroOrders={retiroOrders}
           onMarkDelivered={handleMarkDelivered}
+          onChangeOwnerPassword={handleChangeOwnerPassword}
           loggedInUser={loggedInUser || { name: 'Admin Inquilino', role: 'admin', email: 'admin@cyc.com' }}
           onClearDeliveries={saveDeliveries}
           onAddDelivery={(newDel) => {
