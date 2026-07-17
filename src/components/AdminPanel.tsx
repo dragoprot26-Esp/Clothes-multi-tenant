@@ -15,6 +15,7 @@ interface AdminPanelProps {
   categories: string[];
   deliveries: Delivery[];
   retiroOrders: RetiroOrder[];
+  onMarkDelivered?: (id: string) => void;
   loggedInUser: {
     name: string;
     role: 'admin' | 'collaborator';
@@ -46,6 +47,7 @@ export default function AdminPanel({
   categories,
   deliveries,
   retiroOrders,
+  onMarkDelivered,
   loggedInUser,
   onClearDeliveries,
   onAddDelivery,
@@ -166,6 +168,7 @@ export default function AdminPanel({
   const tenantCollaborators = collaborators.filter((col) => col.tenantId === tenant.id);
 
   const pendingComments = tenantComments.filter((c) => !c.approved);
+  const nuevosEncargos = retiroOrders.filter((o) => o.status !== 'entregado').length;
   const approvedCommentsCount = tenantComments.filter((c) => c.approved).length;
 
   // Handle barcode scan match or creation
@@ -797,6 +800,11 @@ export default function AdminPanel({
                 {tab.id === 'comments' && pendingComments.length > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white font-black text-[9px] flex items-center justify-center animate-pulse border border-red-500 min-w-[18px]">
                     {pendingComments.length}
+                  </span>
+                )}
+                {tab.id === 'orders' && nuevosEncargos > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white font-black text-[9px] flex items-center justify-center animate-pulse border border-red-500 min-w-[18px]">
+                    {nuevosEncargos}
                   </span>
                 )}
               </button>
@@ -1587,9 +1595,20 @@ export default function AdminPanel({
                         <li key={i}>{it.quantity}x {it.name}{it.size ? ' (' + it.size + ')' : ''} — ${it.price}</li>
                       ))}
                     </ul>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="font-bold text-amber-400 text-sm">Total: ${o.total}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${o.status === 'entregado' ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-amber-400 border-amber-500/30 bg-amber-500/10'}`}>{o.status === 'entregado' ? 'Entregado' : 'Nuevo'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border ${o.status === 'entregado' ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-amber-400 border-amber-500/30 bg-amber-500/10'}`}>{o.status === 'entregado' ? 'Entregado' : 'Nuevo'}</span>
+                        {o.status !== 'entregado' && onMarkDelivered && (
+                          <button
+                            id={`btn-deliver-${o.id}`}
+                            onClick={() => onMarkDelivered(o.id)}
+                            className="text-[10px] px-3 py-1 rounded-full font-bold bg-green-600/20 text-green-400 border border-green-500/30 hover:bg-green-600/30 transition-colors cursor-pointer"
+                          >
+                            Marcar entregado
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
