@@ -476,7 +476,7 @@ export default function AdminPanel({
 
   // Print flyer QR
   const handlePrintQR = () => {
-    const publicPageUrl = `${window.location.origin}/?tenant=${tenant.id}`;
+    const publicPageUrl = `${window.location.origin}/?codigo=${tenant.id}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(publicPageUrl)}`;
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -2853,7 +2853,7 @@ export default function AdminPanel({
                 <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-black/40 rounded-xl border border-white/5 text-center">
                   <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-md">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/?tenant=${tenant.id}`)}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/?codigo=${tenant.id}`)}`}
                       alt="Local QR Code"
                       className="w-40 h-40 object-cover"
                     />
@@ -2887,7 +2887,7 @@ export default function AdminPanel({
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/?tenant=${tenant.id}`);
+                          navigator.clipboard.writeText(`${window.location.origin}/?codigo=${tenant.id}`);
                           alert('¡Enlace copiado al portapapeles!');
                         }}
                         className="p-1 hover:bg-white/5 rounded text-amber-500 text-[10px] cursor-pointer"
