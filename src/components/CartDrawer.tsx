@@ -4,7 +4,7 @@ import {
   X, Plus, Minus, Trash2, ShoppingCart, MessageSquare, 
   User, Phone, Mail, ArrowLeft, Copy, Check, CheckCircle2 
 } from 'lucide-react';
-import { CartItem, TenantConfig } from '../types';
+import { CartItem, TenantConfig, RetiroOrder } from '../types';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -14,6 +14,7 @@ interface CartDrawerProps {
   onRemoveItem: (productId: string, size: string) => void;
   onClearCart: () => void;
   tenant: TenantConfig;
+  onPlaceOrder?: (order: RetiroOrder) => void;
 }
 
 export default function CartDrawer({
@@ -23,7 +24,8 @@ export default function CartDrawer({
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
-  tenant
+  tenant,
+  onPlaceOrder
 }: CartDrawerProps) {
   const isDark = tenant.theme.backgroundColor === '#0d0d0d' || tenant.theme.backgroundColor === '#0f172a' || tenant.theme.backgroundColor === '#0a0a0a';
   const isCyc = tenant.id === 'cyc-elegance';
@@ -88,6 +90,20 @@ export default function CartDrawer({
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     const generatedCode = `RET-${prefix}-${randomNum}`;
     
+    const order: RetiroOrder = {
+      id: `ord-${Date.now()}`,
+      code: generatedCode,
+      tenantId: tenant.id,
+      date: new Date().toISOString(),
+      clientName: customerName.trim(),
+      clientPhone: customerPhone.trim(),
+      clientEmail: customerEmail.trim(),
+      items: cart.map((it) => ({ name: it.product.name, quantity: it.quantity, size: it.size, price: it.product.price })),
+      total,
+      status: 'nuevo',
+    };
+    if (onPlaceOrder) onPlaceOrder(order);
+
     setPickupCode(generatedCode);
     setStep('success');
   };

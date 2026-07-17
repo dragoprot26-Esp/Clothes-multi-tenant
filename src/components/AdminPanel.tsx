@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { 
   Package, Palette, LayoutGrid, Users, Settings, TrendingUp, 
   Plus, Trash2, Edit, Check, X, Shield, Star, LogOut, Image, MapPin, Phone, Instagram, Scan, PlusCircle, MinusCircle, Upload, Eye, MessageSquare,
-  Download, FileSpreadsheet, Trash, Calendar, DollarSign, UserCheck, Fingerprint, User, Database, Printer, RefreshCw
+  Download, FileSpreadsheet, Trash, Calendar, DollarSign, UserCheck, Fingerprint, User, Database, Printer, RefreshCw, ShoppingBag
 } from 'lucide-react';
-import { TenantConfig, Product, Comment, Collaborator, Delivery } from '../types';
+import { TenantConfig, Product, Comment, Collaborator, Delivery, RetiroOrder } from '../types';
 import BarcodeScannerModal from './BarcodeScannerModal';
 
 interface AdminPanelProps {
@@ -14,6 +14,7 @@ interface AdminPanelProps {
   collaborators: Collaborator[];
   categories: string[];
   deliveries: Delivery[];
+  retiroOrders: RetiroOrder[];
   loggedInUser: {
     name: string;
     role: 'admin' | 'collaborator';
@@ -44,6 +45,7 @@ export default function AdminPanel({
   collaborators,
   categories,
   deliveries,
+  retiroOrders,
   loggedInUser,
   onClearDeliveries,
   onAddDelivery,
@@ -61,8 +63,8 @@ export default function AdminPanel({
   onDeleteCategory,
   onTogglePublicPreview
 }: AdminPanelProps) {
-  // Tabs: 'products' | 'comments' | 'pagetheme' | 'admintheme' | 'dashboard' | 'collabs' | 'config'
-  const [activeTab, setActiveTab] = useState<'products' | 'comments' | 'pagetheme' | 'admintheme' | 'dashboard' | 'collabs' | 'config'>('dashboard');
+  // Tabs: 'products' | 'orders' | 'comments' | 'pagetheme' | 'admintheme' | 'dashboard' | 'collabs' | 'config'
+  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'comments' | 'pagetheme' | 'admintheme' | 'dashboard' | 'collabs' | 'config'>('dashboard');
 
   // Product addition state
   const [showAddProdModal, setShowAddProdModal] = useState(false);
@@ -770,6 +772,7 @@ export default function AdminPanel({
           {[
             { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
             { id: 'products', label: 'Productos', icon: Package },
+            { id: 'orders', label: 'Encargos', icon: ShoppingBag },
             { id: 'comments', label: 'Comentarios', icon: MessageSquare },
             { id: 'pagetheme', label: 'Tema Página', icon: Palette },
             { id: 'admintheme', label: 'Tema Panel Admin', icon: Shield },
@@ -1555,6 +1558,46 @@ export default function AdminPanel({
         {/* ======================================================== */}
         {/* TAB CONTENT: PRODUCTS */}
         {/* ======================================================== */}
+        {activeTab === 'orders' && (
+          <div id="tab-orders" className="flex flex-col gap-6 animate-fadeIn">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="font-sans font-black text-lg text-white uppercase tracking-wider">Encargos recibidos</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Pedidos de retiro que hicieron tus clientes desde la página pública.</p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">{retiroOrders.length} en total</span>
+            </div>
+            {retiroOrders.length === 0 ? (
+              <div id="orders-empty" className="p-8 text-center text-gray-500 text-sm bg-[#141414] rounded-2xl border border-white/5">
+                Todavía no hay encargos. Cuando un cliente confirme un pedido desde la página pública, aparece acá automáticamente.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {retiroOrders.map((o) => (
+                  <div key={o.id} id={`order-${o.id}`} className="p-4 bg-[#141414] rounded-2xl border border-white/5 flex flex-col gap-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="font-mono font-bold text-white text-sm">{o.code}</span>
+                      <span className="text-[10px] text-gray-500">{new Date(o.date).toLocaleString()}</span>
+                    </div>
+                    <div className="text-xs text-gray-300">
+                      <b className="text-white">{o.clientName}</b> · {o.clientPhone}{o.clientEmail ? ' · ' + o.clientEmail : ''}
+                    </div>
+                    <ul className="text-xs text-gray-400 list-disc pl-4">
+                      {(o.items || []).map((it, i) => (
+                        <li key={i}>{it.quantity}x {it.name}{it.size ? ' (' + it.size + ')' : ''} — ${it.price}</li>
+                      ))}
+                    </ul>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-amber-400 text-sm">Total: ${o.total}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${o.status === 'entregado' ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-amber-400 border-amber-500/30 bg-amber-500/10'}`}>{o.status === 'entregado' ? 'Entregado' : 'Nuevo'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'products' && (
           <div id="tab-products" className="flex flex-col gap-6 animate-fadeIn">
             {/* Products Bar action */}
