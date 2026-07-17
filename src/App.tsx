@@ -13,7 +13,7 @@ import FooterComments from './components/FooterComments';
 import AdminLoginModal from './components/AdminLoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductDetailsModal from './components/ProductDetailsModal';
-import { cloudLoad, cloudSave, clotPublica, clotAgregarPedido, CloudData } from './lib/cloud';
+import { cloudLoad, cloudSave, clotPublica, clotAgregarPedido, clotAgregarResena, CloudData } from './lib/cloud';
 import { Sparkles, MapPin, X, Info } from 'lucide-react';
 
 export default function App() {
@@ -266,6 +266,13 @@ export default function App() {
             return nuevos.length ? [...nuevos, ...prev] : prev;
           });
         }
+        if (data && data.comments) {
+          setComments((prev) => {
+            const ids = new Set(prev.map((c) => c.id));
+            const nuevos = (data.comments as Comment[]).filter((c) => !ids.has(c.id));
+            return nuevos.length ? [...prev, ...nuevos] : prev;
+          });
+        }
       });
     }, 12000);
     return () => clearInterval(iv);
@@ -276,6 +283,10 @@ export default function App() {
     if (!activeTenantId) return;
     clotAgregarPedido(activeTenantId, order);
     setRetiroOrders((prev) => [order, ...prev]);
+  };
+
+  const handleMarkDelivered = (id: string) => {
+    setRetiroOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: 'entregado' } : o)));
   };
 
   // --- CART MUTATIONS ---
@@ -334,6 +345,7 @@ export default function App() {
       approved: false // Must be approved by the admin!
     };
     saveComments([...comments, newComment]);
+    if (activeTenantId) clotAgregarResena(activeTenantId, newComment);
   };
 
   // --- ADMIN ACTIONS ---
@@ -432,6 +444,7 @@ export default function App() {
           categories={categories}
           deliveries={deliveries}
           retiroOrders={retiroOrders}
+          onMarkDelivered={handleMarkDelivered}
           loggedInUser={loggedInUser || { name: 'Admin Inquilino', role: 'admin', email: 'admin@cyc.com' }}
           onClearDeliveries={saveDeliveries}
           onAddDelivery={(newDel) => {
