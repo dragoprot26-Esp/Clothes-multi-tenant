@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Share2, MapPin, Shield, ShoppingBag, Check, MessageCircle, Facebook, Twitter, Send, Copy, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { TenantConfig, CartItem } from '../types';
 
 interface HeaderProps {
@@ -27,7 +28,7 @@ export default function Header({
   };
 
   const handleCopyLink = () => {
-    const shareUrl = window.location.href;
+    const shareUrl = `${window.location.origin}/?codigo=${tenant.id}`;
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -35,7 +36,7 @@ export default function Header({
 
   const isCyc = tenant.id === 'cyc-elegance';
   
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : 'https://tienda.cyc.com';
+  const currentUrl = typeof window !== 'undefined' ? `${window.location.origin}/?codigo=${tenant.id}` : `https://tienda.cyc.com/?codigo=${tenant.id}`;
   const encodedUrl = encodeURIComponent(currentUrl);
   const shareText = `¡Te recomiendo visitar la tienda ${tenant.name}! 🌟 Moda y tendencias espectaculares.`;
   const encodedText = encodeURIComponent(shareText);
@@ -190,8 +191,8 @@ export default function Header({
       </div>
 
       {/* EXQUISITE INTERACTIVE SHARE MODAL */}
-      {isShareModalOpen && (
-        <div id="share-options-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+      {isShareModalOpen && createPortal(
+        <div id="share-options-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
           {/* Backdrop */}
           <div 
             onClick={() => setIsShareModalOpen(false)} 
@@ -200,7 +201,7 @@ export default function Header({
           
           {/* Card Content */}
           <div 
-            className="relative p-6 sm:p-8 rounded-3xl border w-full max-w-md text-center flex flex-col gap-6 shadow-2xl z-10"
+            className="relative p-6 sm:p-8 rounded-3xl border w-full max-w-md text-center flex flex-col gap-5 shadow-2xl z-10 max-h-[90vh] overflow-y-auto"
             style={{ 
               backgroundColor: tenant.theme.cardColor, 
               borderColor: tenant.theme.primaryColor,
@@ -311,7 +312,8 @@ export default function Header({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </header>
   );
