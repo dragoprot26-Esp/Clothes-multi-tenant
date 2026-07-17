@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Key, User, Lock, Fingerprint, RefreshCw, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { TenantConfig, Collaborator } from '../types';
-import { validarLicencia, asegurarCuentaSeguraDueno, emailDe } from '../lib/cloud';
+import { validarLicencia, asegurarCuentaSeguraDueno, emailDe, estaLogueado } from '../lib/cloud';
+import * as biometria from '../lib/biometria';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -44,9 +45,9 @@ export default function AdminLoginModal({
   // Check if biometric is already registered in local storage for this tenant
   useEffect(() => {
     if (isOpen) {
-      const isRegistered = localStorage.getItem(`biometric_registered_${tenant.id}`) === 'true';
-      setIsBiometricRegistered(isRegistered);
-      setEnableBiometrics(isRegistered);
+      const has = biometria.hay();
+      setIsBiometricRegistered(has);
+      setEnableBiometrics(!has);
       
       // Reset fields
       setLicenseInput('');
@@ -98,9 +99,9 @@ export default function AdminLoginModal({
       setIsVerifying(false);
       if (!r.ok) { setErrorMessage(r.msg || 'No se pudo iniciar sesión.'); return; }
       if (enableBiometrics) {
-        localStorage.setItem(`biometric_registered_${tenant.id}`, 'true');
+        try { await biometria.registrar(validatedCodigo, username.trim(), 'admin'); } catch (e) { /* noop */ }
       } else {
-        localStorage.removeItem(`biometric_registered_${tenant.id}`);
+        biometria.borrar();
       }
       onLoginSuccess({
         name: 'Admin Inquilino',
@@ -141,39 +142,20 @@ export default function AdminLoginModal({
     }
   };
 
-  const handleBiometricLogin = () => {
+  const handleBiometricLogin = async () => {
     setIsBiometricScanning(true);
     setErrorMessage('');
-    
-    // Simulate premium biometric scanning (Face ID / Touch ID)
-    setTimeout(() => {
-      setIsBiometricScanning(false);
-      
-      if (loginType === 'admin') {
-        onLoginSuccess({
-          name: 'Admin Inquilino',
-          role: 'admin',
-          email: 'admin@cyc.com',
-          codigo: validatedCodigo
-        });
-      } else {
-        const selectedCollab = tenantCollaborators.find(c => c.id === selectedCollabId);
-        if (selectedCollab && selectedCollab.biometricsAuthorized) {
-          onLoginSuccess({
-            id: selectedCollab.id,
-            name: selectedCollab.name,
-            role: 'collaborator',
-            email: selectedCollab.email,
-            isAdmin2: selectedCollab.isAdmin2,
-            codigo: validatedCodigo
-          });
-        } else {
-          setErrorMessage('Datos biométricos no autorizados para este colaborador.');
-          return;
-        }
-      }
-      onClose();
-    }, 2000);
+    const meta = await biometria.desbloquear();
+    setIsBiometricScanning(false);
+    if (!meta) { setErrorMessage('No se pudo verificar la huella/rostro. Probá de nuevo o entrá con tu clave.'); return; }
+    if (!estaLogueado()) { setErrorMessage('Por seguridad, ingresá una vez con usuario y contraseña; después la huella entra sola.'); return; }
+    if (meta.role === 'collaborator') {
+      const col = tenantCollaborators.find((c) => c.id === meta.colId);
+      if (col) { onLoginSuccess({ id: col.id, name: col.name, role: 'collaborator', email: col.email, isAdmin2: col.isAdmin2, codigo: meta.licenseCode }); onClose(); return; }
+      setErrorMessage('La huella no coincide con un colaborador activo.'); return;
+    }
+    onLoginSuccess({ name: 'Admin Inquilino', role: 'admin', email: emailDe(meta.name || 'admin', meta.licenseCode), codigo: meta.licenseCode });
+    onClose();
   };
 
   return (
@@ -261,6 +243,17 @@ export default function AdminLoginModal({
                       <p className="text-xs text-gray-300">
                         Para ingresar a la consola de administración, valide su licencia de inquilino.
                       </p>
+                      {isBiometricRegistered && (
+                        <button
+                          type="button"
+                          id="btn-biometric-quick-license"
+                          onClick={handleBiometricLogin}
+                          className="mt-3 w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all cursor-pointer"
+                        >
+                          <Fingerprint className="w-4 h-4 animate-pulse" />
+                          <span>Entrar con Huella / FaceID</span>
+                        </button>
+                      )}
                       <span className="text-[10px] text-amber-500 font-bold block mt-2" style={{ color: tenant.theme.primaryColor }}>
                         * Ingresá la clave que te entregó tu proveedor CyC.
                       </span>
