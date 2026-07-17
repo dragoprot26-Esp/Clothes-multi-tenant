@@ -1,0 +1,6 @@
+{
+  "name": "Cyc Clothes Multi-Tenant PWA",
+  "description": "PWA multi-inquilino de ventas de ropa con panel de control CyC-admin, canasta integrada, verificación de licencias y acceso rápido biométrico.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
