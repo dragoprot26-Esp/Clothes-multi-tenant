@@ -371,44 +371,6 @@ export default function App() {
       className="min-h-screen flex flex-col font-sans transition-colors duration-300"
       style={{ backgroundColor: activeTenant.theme.backgroundColor }}
     >
-      {/* 🌟 PREMIUM MULTI-TENANT SHOWCASE CONTROLLER (THE THREE EXAMPLES CHANGER) 🌟 */}
-      <section 
-        id="multi-tenant-selection-bar"
-        className="bg-black text-white px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-white/10 z-50 relative"
-      >
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
-          <div className="text-left">
-            <span className="block text-xs font-black uppercase tracking-widest text-amber-500">MOLDE MULTI-INQUILINO PWA DE ROPA</span>
-            <span className="block text-[10px] text-gray-400">Prueba los 3 ejemplos de tiendas y mira cómo se transforma el diseño y panel:</span>
-          </div>
-        </div>
-
-        {/* The Three Tenant Examples Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          {tenants.map((ten) => (
-            <button
-              id={`btn-tenant-select-${ten.id}`}
-              key={ten.id}
-              onClick={() => handleSelectTenant(ten.id)}
-              className="px-3 py-1.5 rounded-full text-xs font-extrabold flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer shadow border"
-              style={{
-                backgroundColor: activeTenantId === ten.id ? ten.theme.primaryColor : 'rgba(255,255,255,0.05)',
-                color: activeTenantId === ten.id ? '#000000' : '#d4d4d4',
-                borderColor: activeTenantId === ten.id ? ten.theme.accentColor : 'rgba(255,255,255,0.1)'
-              }}
-            >
-              <img 
-                src={ten.logoUrl} 
-                alt="" 
-                className="w-4 h-4 rounded-full object-cover" 
-                referrerPolicy="no-referrer"
-              />
-              <span>{ten.id === 'cyc-elegance' ? 'Cyc Boutique Glamour' : ten.name}</span>
-            </button>
-          ))}
-        </div>
-      </section>
 
       {/* RENDER VIEW: PUBLIC OR ADMIN PANEL */}
       {isAdminLoggedIn && !isPublicPreviewActive ? (
