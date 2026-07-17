@@ -23,6 +23,9 @@ export default function App() {
   const [cloudCodigo, setCloudCodigo] = useState<string | null>(null);
   const [retiroOrders, setRetiroOrders] = useState<RetiroOrder[]>([]);
   const [publicCodigo, setPublicCodigo] = useState<string | null>(null);
+
+  // Guardado local a prueba de errores (si el localStorage se llena por fotos grandes, no rompe: la nube es el respaldo real)
+  const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch (e) { /* cuota llena u otros: se ignora */ } };
   const [products, setProducts] = useState<Product[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
@@ -63,7 +66,7 @@ export default function App() {
       setTenants(JSON.parse(localTenants));
     } else {
       setTenants(INITIAL_TENANTS);
-      localStorage.setItem('cyc_pwa_tenants', JSON.stringify(INITIAL_TENANTS));
+      lsSet('cyc_pwa_tenants', JSON.stringify(INITIAL_TENANTS));
     }
 
     // Products
@@ -72,7 +75,7 @@ export default function App() {
       setProducts(JSON.parse(localProducts));
     } else {
       setProducts(INITIAL_PRODUCTS);
-      localStorage.setItem('cyc_pwa_products', JSON.stringify(INITIAL_PRODUCTS));
+      lsSet('cyc_pwa_products', JSON.stringify(INITIAL_PRODUCTS));
     }
 
     // Comments
@@ -81,7 +84,7 @@ export default function App() {
       setComments(JSON.parse(localComments));
     } else {
       setComments(INITIAL_COMMENTS);
-      localStorage.setItem('cyc_pwa_comments', JSON.stringify(INITIAL_COMMENTS));
+      lsSet('cyc_pwa_comments', JSON.stringify(INITIAL_COMMENTS));
     }
 
     // Collaborators
@@ -90,7 +93,7 @@ export default function App() {
       setCollaborators(JSON.parse(localCollabs));
     } else {
       setCollaborators(INITIAL_COLLABORATORS);
-      localStorage.setItem('cyc_pwa_collaborators', JSON.stringify(INITIAL_COLLABORATORS));
+      lsSet('cyc_pwa_collaborators', JSON.stringify(INITIAL_COLLABORATORS));
     }
 
     // Categories
@@ -99,7 +102,7 @@ export default function App() {
       setCategories(JSON.parse(localCats));
     } else {
       setCategories(DEFAULT_CATEGORIES);
-      localStorage.setItem('cyc_pwa_categories', JSON.stringify(DEFAULT_CATEGORIES));
+      lsSet('cyc_pwa_categories', JSON.stringify(DEFAULT_CATEGORIES));
     }
 
     // Load active tenant cart
@@ -115,7 +118,7 @@ export default function App() {
     } else {
       const generated = generateMockDeliveries(localProducts ? JSON.parse(localProducts) : INITIAL_PRODUCTS);
       setDeliveries(generated);
-      localStorage.setItem('cyc_pwa_deliveries', JSON.stringify(generated));
+      lsSet('cyc_pwa_deliveries', JSON.stringify(generated));
     }
   }, []);
 
@@ -183,36 +186,36 @@ export default function App() {
   // --- SAVE STATE WRAPPERS ---
   const saveDeliveries = (updated: Delivery[]) => {
     setDeliveries(updated);
-    localStorage.setItem('cyc_pwa_deliveries', JSON.stringify(updated));
+    lsSet('cyc_pwa_deliveries', JSON.stringify(updated));
   };
   const saveTenants = (updated: TenantConfig[]) => {
     setTenants(updated);
-    localStorage.setItem('cyc_pwa_tenants', JSON.stringify(updated));
+    lsSet('cyc_pwa_tenants', JSON.stringify(updated));
   };
 
   const saveProducts = (updated: Product[]) => {
     setProducts(updated);
-    localStorage.setItem('cyc_pwa_products', JSON.stringify(updated));
+    lsSet('cyc_pwa_products', JSON.stringify(updated));
   };
 
   const saveComments = (updated: Comment[]) => {
     setComments(updated);
-    localStorage.setItem('cyc_pwa_comments', JSON.stringify(updated));
+    lsSet('cyc_pwa_comments', JSON.stringify(updated));
   };
 
   const saveCollaborators = (updated: Collaborator[]) => {
     setCollaborators(updated);
-    localStorage.setItem('cyc_pwa_collaborators', JSON.stringify(updated));
+    lsSet('cyc_pwa_collaborators', JSON.stringify(updated));
   };
 
   const saveCarts = (updatedCarts: Record<string, CartItem[]>) => {
     setCarts(updatedCarts);
-    localStorage.setItem('cyc_pwa_carts', JSON.stringify(updatedCarts));
+    lsSet('cyc_pwa_carts', JSON.stringify(updatedCarts));
   };
 
   const saveCategories = (updatedCats: string[]) => {
     setCategories(updatedCats);
-    localStorage.setItem('cyc_pwa_categories', JSON.stringify(updatedCats));
+    lsSet('cyc_pwa_categories', JSON.stringify(updatedCats));
   };
 
   // Get active tenant details
