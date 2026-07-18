@@ -13,7 +13,7 @@ import FooterComments from './components/FooterComments';
 import AdminLoginModal from './components/AdminLoginModal';
 import AdminPanel from './components/AdminPanel';
 import ProductDetailsModal from './components/ProductDetailsModal';
-import { cloudLoad, cloudSave, clotPublica, clotAgregarPedido, clotAgregarResena, cambiarPasswordDueno, CloudData } from './lib/cloud';
+import { cloudLoad, cloudSave, clotPublica, clotAgregarPedido, clotAgregarResena, cambiarPasswordDueno, clotVersion, CloudData } from './lib/cloud';
 import { Sparkles, MapPin, X, Info } from 'lucide-react';
 
 export default function App() {
@@ -149,21 +149,24 @@ export default function App() {
   // Se PAUSA mientras el carrito está abierto para no molestar al cliente que está encargando.
   useEffect(() => {
     if (!publicCodigo || isAdminLoggedIn || isCartOpen) return;
-    const iv = setInterval(() => {
-      clotPublica(publicCodigo).then((data) => {
-        if (!data) return;
-        if (data.tenants && data.tenants.length) {
-          const cloudTenants = data.tenants as TenantConfig[];
-          setTenants((prev) => {
-            const otros = prev.filter((t) => !cloudTenants.some((ct) => ct.id === t.id));
-            return [...cloudTenants, ...otros];
-          });
-        }
-        if (data.products) setProducts(data.products as Product[]);
-        if (data.comments) setComments(data.comments as Comment[]);
-        if (data.categories && data.categories.length) setCategories(data.categories as string[]);
-      });
-    }, 15000);
+    let lastVer = '';
+    const iv = setInterval(async () => {
+      const ver = await clotVersion(publicCodigo);
+      if (!ver || ver === lastVer) return; // nada cambió → no baja imágenes
+      const data = await clotPublica(publicCodigo);
+      if (!data) return;
+      lastVer = ver;
+      if (data.tenants && data.tenants.length) {
+        const cloudTenants = data.tenants as TenantConfig[];
+        setTenants((prev) => {
+          const otros = prev.filter((t) => !cloudTenants.some((ct) => ct.id === t.id));
+          return [...cloudTenants, ...otros];
+        });
+      }
+      if (data.products) setProducts(data.products as Product[]);
+      if (data.comments) setComments(data.comments as Comment[]);
+      if (data.categories && data.categories.length) setCategories(data.categories as string[]);
+    }, 30000);
     return () => clearInterval(iv);
   }, [publicCodigo, isAdminLoggedIn, isCartOpen]);
 
@@ -285,24 +288,27 @@ export default function App() {
   // Poll de encargos entrantes (sincroniza pública -> panel) cada 12s
   useEffect(() => {
     if (!cloudCodigo || !isAdminLoggedIn) return;
-    const iv = setInterval(() => {
-      cloudLoad(cloudCodigo).then((data) => {
-        if (data && data.retiroOrders) {
-          setRetiroOrders((prev) => {
-            const ids = new Set(prev.map((o) => o.id));
-            const nuevos = (data.retiroOrders as RetiroOrder[]).filter((o) => !ids.has(o.id));
-            return nuevos.length ? [...nuevos, ...prev] : prev;
-          });
-        }
-        if (data && data.comments) {
-          setComments((prev) => {
-            const ids = new Set(prev.map((c) => c.id));
-            const nuevos = (data.comments as Comment[]).filter((c) => !ids.has(c.id));
-            return nuevos.length ? [...prev, ...nuevos] : prev;
-          });
-        }
-      });
-    }, 12000);
+    let lastVer = '';
+    const iv = setInterval(async () => {
+      const ver = await clotVersion(cloudCodigo);
+      if (!ver || ver === lastVer) return; // nada cambió → no baja imágenes
+      const data = await cloudLoad(cloudCodigo);
+      lastVer = ver;
+      if (data && data.retiroOrders) {
+        setRetiroOrders((prev) => {
+          const ids = new Set(prev.map((o) => o.id));
+          const nuevos = (data.retiroOrders as RetiroOrder[]).filter((o) => !ids.has(o.id));
+          return nuevos.length ? [...nuevos, ...prev] : prev;
+        });
+      }
+      if (data && data.comments) {
+        setComments((prev) => {
+          const ids = new Set(prev.map((c) => c.id));
+          const nuevos = (data.comments as Comment[]).filter((c) => !ids.has(c.id));
+          return nuevos.length ? [...prev, ...nuevos] : prev;
+        });
+      }
+    }, 30000);
     return () => clearInterval(iv);
   }, [cloudCodigo, isAdminLoggedIn]);
 
