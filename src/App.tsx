@@ -23,6 +23,7 @@ export default function App() {
   const [cloudCodigo, setCloudCodigo] = useState<string | null>(null);
   const [retiroOrders, setRetiroOrders] = useState<RetiroOrder[]>([]);
   const [publicCodigo, setPublicCodigo] = useState<string | null>(null);
+  const [bloqueada, setBloqueada] = useState(false);
 
   // Guardado local a prueba de errores (si el localStorage se llena por fotos grandes, no rompe: la nube es el respaldo real)
   const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch (e) { /* cuota llena u otros: se ignora */ } };
@@ -130,6 +131,8 @@ export default function App() {
     setPublicCodigo(codigo);
     clotPublica(codigo).then((data) => {
       if (!data) return;
+      if ((data as any).bloqueada) { setBloqueada(true); return; }  // kill switch
+      setBloqueada(false);
       if (data.tenants && data.tenants.length) {
         const cloudTenants = data.tenants as TenantConfig[];
         setTenants((prev) => {
@@ -156,6 +159,8 @@ export default function App() {
       const data = await clotPublica(publicCodigo);
       if (!data) return;
       lastVer = ver;
+      if ((data as any).bloqueada) { setBloqueada(true); return; }  // kill switch
+      setBloqueada(false);
       if (data.tenants && data.tenants.length) {
         const cloudTenants = data.tenants as TenantConfig[];
         setTenants((prev) => {
@@ -461,6 +466,24 @@ export default function App() {
     if (activeCategory === 'Ofertas') return p.isOffer;
     return p.category === activeCategory;
   });
+
+  // Kill switch: si el dueño bloqueó la pública, el visitante ve "En Mantenimiento".
+  // (Va DESPUÉS de todos los hooks: React no permite retornar antes de ejecutarlos.)
+  if (bloqueada && publicCodigo) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#0b0b0f] text-gray-100 font-sans">
+        <div className="max-w-md w-full text-center bg-[#16161c] border border-white/10 rounded-3xl p-8 shadow-2xl">
+          <div className="text-5xl mb-4">🛠️</div>
+          <h1 className="text-2xl font-black tracking-tight mb-2">En Mantenimiento</h1>
+          <p className="text-sm text-gray-400 leading-relaxed">
+            Estamos trabajando para brindarte una mejor experiencia. La página vuelve muy pronto.
+            <br /><br />¡Gracias por tu paciencia! Saludos cordiales. 🙌
+          </p>
+          <div className="mt-6 h-1 w-16 bg-amber-500 rounded-full mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
